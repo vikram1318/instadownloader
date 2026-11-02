@@ -1,0 +1,51 @@
+# ═══════════════════════════════════════════════════
+# .gitignore — files never pushed to git / public
+# ═══════════════════════════════════════════════════
+
+# ── Secrets & credentials ──────────────────────────
+.env
+cookies.txt
+*.cookies
+*.netrc
+secrets/
+
+# ── Downloaded content ─────────────────────────────
+downloads/
+*.mp4
+*.webm
+*.mkv
+*.m4a
+
+# ── Python runtime ─────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── OS / editor noise ──────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Logs ───────────────────────────────────────────
+*.log
+failed_links.txt
+
+# ── Compiled / cache ───────────────────────────────
+*.pyc
+*.pycache
+.cache/
+

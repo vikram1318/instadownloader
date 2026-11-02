@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InstaBatch Downloader</title>
+  <style>
+    /* ── Variables ── */
+    :root {
+      --bg:       #0a0a0a;
+      --surface:  #141414;
+      --surface2: #1e1e1e;
+      --surface3: #282828;
+      --border:   #2e2e2e;
+      --text:     #efefef;
+      --muted:    #777;
+      --purple:   #a855f7;
+      --pink:     #ec4899;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --yellow:   #f59e0b;
+      --blue:     #60a5fa;
+      --radius:   14px;
+      --rsm:      9px;
+      --shadow:   0 8px 32px rgba(0,0,0,.6);
+      --grad: linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);
+      --grad-btn: linear-gradient(90deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);
+    }
+
+    /* ── Reset ── */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      background:var(--bg);color:var(--text);
+      min-height:100vh;padding-bottom:80px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar{width:7px;height:7px}
+    ::-webkit-scrollbar-track{background:var(--surface)}
+    ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
+
+    /* ── Header ── */
+    header{
+      background:rgba(20,20,20,.92);
+      border-bottom:1px solid var(--border);
+      padding:16px 0;position:sticky;top:0;z-index:100;
+      backdrop-filter:blur(16px);
+    }
+    .header-inner{
+      max-width:900px;margin:0 auto;padding:0 24px;
+      display:flex;align-items:center;justify-content:space-between;gap:14px;
+    }
+    .logo-wrap{display:flex;align-items:center;gap:12px}
+    .logo{width:38px;height:38px;flex-shrink:0}
+    .brand h1{
+      font-size:1.3rem;font-weight:800;
+      background:var(--grad);-webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .brand p{font-size:.75rem;color:var(--muted);margin-top:2px}
+
+    /* ── Status pill (top right) ── */
+    #health-pill{
+      display:inline-flex;align-items:center;gap:7px;
+      padding:5px 13px;border-radius:20px;
+      font-size:.75rem;font-weight:600;
+      background:var(--surface2);border:1px solid var(--border);
+      color:var(--muted);cursor:default;transition:all .3s;
+    }
+    #health-pill.ok   {border-color:rgba(34,197,94,.4);color:var(--green)}
+    #health-pill.warn {border-color:rgba(245,158,11,.4);color:var(--yellow)}
+    #health-pill.err  {border-color:rgba(239,68,68,.4); color:var(--red)}
+    .health-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+    /* ── Main ── */
+    main{max-width:900px;margin:0 auto;padding:28px 24px 0}
+
+    /* ── Card ── */
+    .card{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:22px;
+      margin-bottom:22px;box-shadow:var(--shadow);
+    }
+    .card-title{
+      font-size:.78rem;font-weight:700;
+      text-transform:uppercase;letter-spacing:.1em;
+      color:var(--muted);margin-bottom:16px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .card-title span{font-size:.95rem}
+
+    /* ── Link table ── */
+    .link-table-wrap{
+      border:1px solid var(--border);border-radius:var(--rsm);
+      overflow:hidden;background:var(--surface2);
+      transition:border-color .25s;
+    }
+    .link-table-wrap.flash-error{border-color:var(--red)!important}
+    .link-table-head{
+      display:grid;grid-template-columns:46px 1fr 42px;
+      background:var(--surface3);
+      padding:8px 12px;
+      font-size:.7rem;font-weight:700;
+      color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+      border-bottom:1px solid var(--border);
+    }
+    .link-rows{max-height:320px;overflow-y:auto}
+
+    .link-row{
+      display:grid;grid-template-columns:46px 1fr 42px;
+      align-items:center;border-bottom:1px solid var(--border);
+      transition:background .15s;
+    }
+    .link-row:last-child{border-bottom:none}
+    .link-row:hover{background:rgba(168,85,247,.05)}
+    .link-row.filled{background:rgba(168,85,247,.04)}
+
+    .row-num{
+      font-size:.75rem;font-weight:700;color:var(--muted);
+      text-align:center;user-select:none;
+      font-family:'Courier New',monospace;
+    }
+    .row-input{
+      background:transparent;border:none;outline:none;
+      color:var(--text);font-size:.84rem;
+      font-family:'Courier New',monospace;
+      padding:11px 8px;width:100%;
+    }
+    .row-input::placeholder{color:#444;font-size:.78rem}
+    .row-input.has-value{color:#c084fc}
+    .row-del{
+      background:none;border:none;color:#3a3a3a;
+      font-size:.95rem;cursor:pointer;
+      padding:0 12px;height:100%;
+      display:flex;align-items:center;justify-content:center;
+      transition:color .15s;line-height:1;
+    }
+    .row-del:hover{color:var(--red)}
+
+    .link-table-foot{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:9px 14px;border-top:1px solid var(--border);
+      background:var(--surface3);flex-wrap:wrap;gap:8px;
+    }
+    .btn-add-row{
+      background:none;border:1px dashed #3a3a3a;color:var(--purple);
+      font-size:.8rem;font-weight:600;padding:5px 14px;
+      border-radius:20px;cursor:pointer;
+      display:inline-flex;align-items:center;gap:5px;
+      transition:border-color .2s,background .2s;
+    }
+    .btn-add-row:hover{border-color:var(--purple);background:rgba(168,85,247,.1)}
+    .count-label{font-size:.75rem;color:var(--muted)}
+    .count-label b{color:var(--purple)}
+    .btn-clear-all{
+      background:none;border:none;color:#3a3a3a;
+      font-size:.75rem;cursor:pointer;padding:4px 8px;
+      border-radius:6px;transition:color .2s,background .2s;
+    }
+    .btn-clear-all:hover{color:var(--red);background:rgba(239,68,68,.1)}
+
+    /* ── Paste-hint ── */
+    .paste-hint{
+      margin-top:10px;font-size:.75rem;color:var(--muted);
+      display:flex;align-items:center;gap:6px;
+    }
+    .paste-hint kbd{
+      background:var(--surface3);border:1px solid var(--border);
+      border-radius:4px;padding:1px 6px;font-size:.72rem;
+      font-family:monospace;color:var(--text);
+    }
+
+    /* ── Settings toggle ── */
+    .settings-toggle{
+      background:none;border:1px solid var(--border);color:var(--muted);
+      font-size:.8rem;padding:6px 14px;border-radius:20px;
+      cursor:pointer;margin-top:14px;
+      transition:border-color .2s,color .2s;
+      display:inline-flex;align-items:center;gap:6px;
+    }
+    .settings-toggle:hover{border-color:var(--purple);color:var(--text)}
+    .settings-toggle .arrow{transition:transform .25s;display:inline-block}
+    .settings-toggle.open .arrow{transform:rotate(180deg)}
+
+    #settings-panel{
+      display:none;margin-top:16px;padding-top:16px;
+      border-top:1px solid var(--border);
+    }
+    #settings-panel.visible{display:block}
+    .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;grid-template-rows:auto auto}
+    .settings-grid .setting-item:last-child{grid-column:1/-1}
+    @media(max-width:520px){.settings-grid{grid-template-columns:1fr}.settings-grid .setting-item:last-child{grid-column:unset}}
+
+    .setting-item label{
+      display:block;font-size:.77rem;color:var(--muted);
+      margin-bottom:8px;font-weight:600;
+    }
+    .setting-item select{
+      width:100%;background:var(--surface2);border:1px solid var(--border);
+      color:var(--text);border-radius:var(--rsm);padding:9px 12px;
+      font-size:.88rem;outline:none;cursor:pointer;transition:border-color .2s;
+    }
+    .setting-item select:focus{border-color:var(--purple)}
+
+    /* Slider */
+    .slider-row{display:flex;align-items:center;gap:10px}
+    input[type=range]{
+      flex:1;-webkit-appearance:none;background:var(--surface3);
+      height:5px;border-radius:3px;outline:none;cursor:pointer;
+    }
+    input[type=range]::-webkit-slider-thumb{
+      -webkit-appearance:none;width:17px;height:17px;border-radius:50%;
+      background:var(--purple);cursor:pointer;
+      box-shadow:0 0 0 3px rgba(168,85,247,.25);
+    }
+    #workers-val{
+      font-size:.9rem;font-weight:800;color:var(--purple);
+      min-width:22px;text-align:center;
+    }
+
+    /* ── Download button ── */
+    #download-btn{
+      width:100%;padding:14px;border:none;border-radius:var(--rsm);
+      font-size:1rem;font-weight:800;cursor:pointer;
+      background:var(--grad-btn);background-size:200% 100%;color:#fff;
+      letter-spacing:.04em;transition:opacity .2s,transform .15s,box-shadow .2s;
+      box-shadow:0 4px 20px rgba(188,24,136,.3);margin-top:18px;
+    }
+    #download-btn:hover:not(:disabled){
+      opacity:.92;transform:translateY(-1px);
+      box-shadow:0 6px 28px rgba(188,24,136,.5);
+    }
+    #download-btn:active:not(:disabled){transform:translateY(0)}
+    #download-btn:disabled{opacity:.4;cursor:not-allowed}
+
+    /* ── Warning banner ── */
+    .warn-banner{
+      display:none;align-items:center;gap:10px;
+      padding:11px 14px;border-radius:var(--rsm);
+      background:rgba(245,158,11,.08);
+      border:1px solid rgba(245,158,11,.3);
+      font-size:.82rem;color:var(--yellow);margin-bottom:18px;
+    }
+    .warn-banner.visible{display:flex}
+
+    /* ── Progress card ── */
+    #progress-section{display:none}
+    #progress-section.visible{display:block}
+
+    .status-row{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:14px;flex-wrap:wrap;gap:10px;
+    }
+    .status-info{display:flex;align-items:center;gap:10px}
+
+    .badge{
+      padding:4px 12px;border-radius:20px;font-size:.72rem;
+      font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    }
+    .badge-running{background:rgba(168,85,247,.15);color:var(--purple);border:1px solid rgba(168,85,247,.35)}
+    .badge-done   {background:rgba(34,197,94,.12); color:var(--green); border:1px solid rgba(34,197,94,.3)}
+    .badge-error  {background:rgba(239,68,68,.12); color:var(--red);   border:1px solid rgba(239,68,68,.3)}
+
+    #progress-label{font-size:.88rem;color:var(--muted)}
+    #summary{font-size:.88rem;color:var(--muted)}
+
+    .progress-bar-wrap{
+      width:100%;height:7px;background:var(--surface3);
+      border-radius:4px;overflow:hidden;margin-bottom:14px;
+    }
+    #progress-fill{
+      height:100%;width:0%;background:var(--grad-btn);
+      border-radius:4px;transition:width .5s ease;
+    }
+
+    /* Log console */
+    #log-console{
+      background:#050505;border:1px solid #1c1c1c;border-radius:var(--rsm);
+      padding:13px;font-family:'Courier New',monospace;
+      font-size:.76rem;height:210px;overflow-y:auto;
+      line-height:1.75;white-space:pre-wrap;word-break:break-all;
+    }
+    .log-ok  {color:#22c55e}
+    .log-fail{color:#f87171}
+    .log-info{color:#60a5fa}
+    .log-warn{color:#f59e0b}
+
+    /* Failed box */
+    #failed-box{
+      display:none;margin-top:14px;padding:14px;
+      background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);
+      border-radius:var(--rsm);
+    }
+    #failed-box.visible{display:block}
+    .failed-header{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .failed-header h4{color:var(--red);font-size:.86rem}
+    .btn-retry{
+      background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.38);
+      color:var(--red);padding:5px 14px;border-radius:20px;
+      font-size:.78rem;font-weight:700;cursor:pointer;transition:background .2s;
+    }
+    .btn-retry:hover{background:rgba(239,68,68,.32)}
+    #failed-list{
+      font-family:'Courier New',monospace;font-size:.76rem;
+      color:#fca5a5;max-height:90px;overflow-y:auto;line-height:1.9;
+    }
+
+    /* ── Files card ── */
+    .files-header{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:16px;flex-wrap:wrap;gap:10px;
+    }
+    .files-header-left{display:flex;align-items:center;gap:10px}
+    .files-header h2{font-size:.98rem;font-weight:700;color:var(--text)}
+
+    .btn-icon{
+      background:var(--surface2);border:1px solid var(--border);
+      color:var(--muted);padding:6px 13px;border-radius:20px;
+      font-size:.78rem;cursor:pointer;
+      transition:border-color .2s,color .2s,background .2s;
+      display:inline-flex;align-items:center;gap:5px;
+    }
+    .btn-icon:hover{border-color:var(--purple);color:var(--text);background:var(--surface3)}
+
+    /* file count badge */
+    #file-count-badge{
+      background:var(--surface3);border:1px solid var(--border);
+      color:var(--muted);font-size:.72rem;font-weight:700;
+      padding:2px 9px;border-radius:20px;
+    }
+
+    #files-grid{
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+      gap:12px;
+    }
+    .file-card{
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--rsm);padding:13px;
+      display:flex;align-items:flex-start;gap:10px;
+      transition:border-color .2s,transform .15s;cursor:default;
+    }
+    .file-card:hover{border-color:var(--purple);transform:translateY(-2px)}
+    .file-icon{font-size:1.5rem;flex-shrink:0;line-height:1}
+    .file-info{flex:1;overflow:hidden}
+    .file-name{
+      font-size:.78rem;font-weight:600;word-break:break-all;
+      color:var(--text);display:-webkit-box;
+      -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    }
+    .file-meta{font-size:.7rem;color:var(--muted);margin-top:4px}
+    .file-actions{display:flex;gap:6px;margin-top:8px}
+    .file-action-btn{
+      background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);
+      color:var(--purple);font-size:.7rem;font-weight:600;
+      padding:3px 9px;border-radius:12px;text-decoration:none;
+      display:inline-flex;align-items:center;gap:3px;
+      transition:all .2s;
+    }
+    .file-action-btn:hover{background:rgba(168,85,247,.28);border-color:var(--purple);color:#fff}
+
+    #files-empty{
+      color:var(--muted);font-size:.88rem;padding:28px 0;
+      text-align:center;grid-column:1/-1;
+    }
+
+    .open-folder-btn-wrap{
+      margin-top:14px;display:flex;justify-content:center;
+    }
+
+    /* ── Animations ── */
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.25}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+    .pulse-dot{
+      width:7px;height:7px;background:currentColor;border-radius:50%;
+      display:inline-block;animation:pulse-dot 1.1s ease infinite;
+    }
+    .fade-in{animation:fadeIn .3s ease}
+
+    /* ── Toast ── */
+    #toast{
+      position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:var(--surface3);border:1px solid var(--border);
+      color:var(--text);padding:10px 22px;border-radius:24px;
+      font-size:.84rem;font-weight:600;
+      box-shadow:0 4px 20px rgba(0,0,0,.5);
+      opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;
+      z-index:999;white-space:nowrap;
+    }
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-inner">
+    <div class="logo-wrap">
+      <svg class="logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ig" x1="0" y1="40" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stop-color="#f09433"/>
+            <stop offset="25%"  stop-color="#e6683c"/>
+            <stop offset="50%"  stop-color="#dc2743"/>
+            <stop offset="75%"  stop-color="#cc2366"/>
+            <stop offset="100%" stop-color="#bc1888"/>
+          </linearGradient>
+        </defs>
+        <rect width="40" height="40" rx="11" fill="url(#ig)"/>
+        <rect x="10" y="10" width="20" height="20" rx="5" stroke="white" stroke-width="2.2" fill="none"/>
+        <circle cx="20" cy="20" r="5" stroke="white" stroke-width="2.2" fill="none"/>
+        <circle cx="27.5" cy="12.5" r="1.6" fill="white"/>
+      </svg>
+      <div class="brand">
+        <h1>InstaBatch Downloader</h1>
+        <p>Download Instagram reels &amp; posts in bulk</p>
+      </div>
+    </div>
+    <div id="health-pill" title="Server status">
+      <span class="health-dot"></span>
+      <span id="health-text">Checking…</span>
+    </div>
+    <a href="/logout" id="logout-btn" style="display:none;background:none;border:1px solid #2e2e2e;color:#777;font-size:.75rem;padding:5px 13px;border-radius:20px;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#2e2e2e';this.style.color='#777'">Sign out</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── ffmpeg warning ── -->
+  <div class="warn-banner" id="ffmpeg-warn">
+    ⚠️ <strong>ffmpeg not found.</strong>&nbsp; Videos will still download, but audio &amp; video may not merge into a single .mp4. Install ffmpeg and add it to PATH for best results.
+  </div>
+
+  <!-- ── Input card ── -->
+  <div class="card">
+    <div class="card-title"><span>🔗</span> Instagram Links</div>
+
+    <div class="link-table-wrap" id="link-table-wrap">
+      <div class="link-table-head">
+        <span>#</span>
+        <span>Instagram URL</span>
+        <span></span>
+      </div>
+      <div class="link-rows" id="link-rows"></div>
+      <div class="link-table-foot">
+        <button class="btn-add-row" id="add-row-btn">＋ Add Row</button>
+        <span class="count-label"><b id="filled-count">0</b> link(s) ready</span>
+        <button class="btn-clear-all" id="clear-all-btn" title="Clear all rows">✕ Clear all</button>
+      </div>
+    </div>
+
+    <div class="paste-hint">
+      💡 Tip: paste multiple links at once — each line auto-fills a new cell.
+      Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to jump to next row.
+    </div>
+
+    <!-- Settings -->
+    <button class="settings-toggle" id="settings-btn">
+      ⚙ Settings <span class="arrow">▾</span>
+    </button>
+
+    <div id="settings-panel">
+      <div class="settings-grid">
+        <div class="setting-item">
+          <label for="cookie-source">🍪 Cookie source (needed for private / login-gated content)</label>
+          <select id="cookie-source">
+            <option value="">None — public posts only</option>
+            <option value="chrome">Chrome</option>
+            <option value="firefox">Firefox</option>
+            <option value="edge">Edge</option>
+            <option value="brave">Brave</option>
+            <option value="safari">Safari</option>
+            <option value="opera">Opera</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <label for="quality-select">🎬 Video quality</label>
+          <select id="quality-select">
+            <option value="best" selected>⭐ Best available (highest quality)</option>
+            <option value="1080p">1080p Full HD</option>
+            <option value="720p">720p HD</option>
+            <option value="480p">480p SD</option>
+            <option value="360p">360p Low</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <label>⚡ Parallel workers: <span id="workers-val">5</span></label>
+          <div class="slider-row">
+            <span style="color:var(--muted);font-size:.78rem">1</span>
+            <input type="range" id="workers" min="1" max="20" value="5">
+            <span style="color:var(--muted);font-size:.78rem">20</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="download-btn">⬇ Download Videos</button>
+  </div>
+
+  <!-- ── Progress card ── -->
+  <div class="card fade-in" id="progress-section">
+    <div class="status-row">
+      <div class="status-info">
+        <span id="status-badge" class="badge badge-running">
+          <span class="pulse-dot"></span>&nbsp; Running
+        </span>
+        <span id="progress-label">0 / 0</span>
+      </div>
+      <span id="summary"></span>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div id="progress-fill"></div>
+    </div>
+
+    <div id="log-console"></div>
+
+    <div id="failed-box">
+      <div class="failed-header">
+        <h4>⚠ Failed URLs</h4>
+        <button class="btn-retry" id="retry-btn">↺ Retry Failed</button>
+      </div>
+      <div id="failed-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Downloads card ── -->
+  <div class="card">
+    <div class="files-header">
+      <div class="files-header-left">
+        <h2>📁 Downloaded Files</h2>
+        <span id="file-count-badge">0</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-icon" id="open-folder-btn">📂 Open Folder</button>
+        <button class="btn-icon" id="refresh-files-btn">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="files-grid">
+      <div id="files-empty">No downloads yet — paste links above and hit Download!</div>
+    </div>
+    <div class="open-folder-btn-wrap">
+      <small style="color:var(--muted);font-size:.72rem">
+        Files are saved in <code style="color:var(--purple)">downloads\</code> inside your project folder
+      </small>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════════ */
+let currentJobId  = null;
+let pollInterval  = null;
+let lastLogCount  = 0;
+const MIN_ROWS    = 6;
+
+/* ════════════════════════════════════════════════════════
+   DOM REFS
+════════════════════════════════════════════════════════ */
+const linkRows      = document.getElementById('link-rows');
+const addRowBtn     = document.getElementById('add-row-btn');
+const clearAllBtn   = document.getElementById('clear-all-btn');
+const filledCount   = document.getElementById('filled-count');
+const downloadBtn   = document.getElementById('download-btn');
+const settingsBtn   = document.getElementById('settings-btn');
+const settingsPanel = document.getElementById('settings-panel');
+const workersInput  = document.getElementById('workers');
+const workersVal    = document.getElementById('workers-val');
+const cookieSrc     = document.getElementById('cookie-source');
+const qualitySelect = document.getElementById('quality-select');
+
+const progressSec   = document.getElementById('progress-section');
+const statusBadge   = document.getElementById('status-badge');
+const progressLabel = document.getElementById('progress-label');
+const progressFill  = document.getElementById('progress-fill');
+const logConsole    = document.getElementById('log-console');
+const summaryEl     = document.getElementById('summary');
+const failedBox     = document.getElementById('failed-box');
+const failedList    = document.getElementById('failed-list');
+const retryBtn      = document.getElementById('retry-btn');
+
+const filesGrid       = document.getElementById('files-grid');
+const filesEmpty      = document.getElementById('files-empty');
+const refreshFilesBtn = document.getElementById('refresh-files-btn');
+const openFolderBtn   = document.getElementById('open-folder-btn');
+const fileCountBadge  = document.getElementById('file-count-badge');
+const ffmpegWarn      = document.getElementById('ffmpeg-warn');
+const healthPill      = document.getElementById('health-pill');
+const healthText      = document.getElementById('health-text');
+
+/* ════════════════════════════════════════════════════════
+   HEALTH CHECK
+════════════════════════════════════════════════════════ */
+async function checkHealth() {
+  try {
+    const res  = await fetch('/api/check');
+    const data = await res.json();
+    if (data.status === 'ok') {
+      healthPill.className = data.ffmpeg ? 'ok' : 'warn';
+      healthText.textContent = data.ffmpeg
+        ? `yt-dlp ${data.yt_dlp} · ffmpeg ✓`
+        : `yt-dlp ${data.yt_dlp} · ffmpeg missing`;
+      if (!data.ffmpeg) ffmpegWarn.classList.add('visible');
+      // Show logout button if password protection is on
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+    }
+  } catch {
+    healthPill.className = 'err';
+    healthText.textContent = 'Server error';
+  }
+}
+checkHealth();
+
+/* ════════════════════════════════════════════════════════
+   LINK TABLE
+════════════════════════════════════════════════════════ */
+function createRow(idx, value = '') {
+  const row   = document.createElement('div');
+  row.className = 'link-row' + (value ? ' filled' : '');
+
+  const num   = document.createElement('div');
+  num.className = 'row-num';
+  num.textContent = idx;
+
+  const input = document.createElement('input');
+  input.type        = 'text';
+  input.className   = 'row-input' + (value ? ' has-value' : '');
+  input.placeholder = 'https://www.instagram.com/reel/…';
+  input.value       = value;
+  input.autocomplete= 'off';
+  input.spellcheck  = false;
+
+  const del   = document.createElement('button');
+  del.className   = 'row-del';
+  del.title       = 'Remove row';
+  del.textContent = '✕';
+
+  /* live update */
+  input.addEventListener('input', () => {
+    const v = input.value.trim().length > 0;
+    input.classList.toggle('has-value', v);
+    row.classList.toggle('filled', v);
+    updateFilledCount();
+  });
+
+  /* Enter / Tab → new row */
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+      const rows = [...linkRows.querySelectorAll('.link-row')];
+      if (rows[rows.length - 1] === row) {
+        e.preventDefault();
+        const newRow = addRow('');
+        linkRows.scrollTop = linkRows.scrollHeight;
+        newRow.querySelector('input').focus();
+      }
+    }
+  });
+
+  /* multi-line paste → fill cells */
+  input.addEventListener('paste', e => {
+    const text  = (e.clipboardData || window.clipboardData).getData('text');
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length <= 1) return;
+    e.preventDefault();
+    input.value = lines[0];
+    input.dispatchEvent(new Event('input'));
+    for (let i = 1; i < lines.length; i++) addRow(lines[i]);
+    updateRowNumbers();
+  });
+
+  /* delete row */
+  del.addEventListener('click', () => {
+    const all = linkRows.querySelectorAll('.link-row');
+    if (all.length <= 1) {
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      return;
+    }
+    row.remove();
+    updateRowNumbers();
+    updateFilledCount();
+  });
+
+  row.appendChild(num);
+  row.appendChild(input);
+  row.appendChild(del);
+  return row;
+}
+
+function addRow(value = '') {
+  const idx = linkRows.querySelectorAll('.link-row').length + 1;
+  const row = createRow(idx, value);
+  linkRows.appendChild(row);
+  updateFilledCount();
+  return row;
+}
+
+function updateRowNumbers() {
+  linkRows.querySelectorAll('.link-row').forEach((row, i) => {
+    row.querySelector('.row-num').textContent = i + 1;
+  });
+}
+
+function updateFilledCount() {
+  const n = [...linkRows.querySelectorAll('.row-input')]
+    .filter(inp => inp.value.trim().length > 0).length;
+  filledCount.textContent = n;
+}
+
+function getURLs() {
+  return [...linkRows.querySelectorAll('.row-input')]
+    .map(inp => inp.value.trim())
+    .filter(v => v.length > 0);
+}
+
+function setURLs(urls) {
+  linkRows.innerHTML = '';
+  const total = Math.max(urls.length, MIN_ROWS);
+  for (let i = 0; i < total; i++) addRow(urls[i] || '');
+  updateRowNumbers();
+}
+
+/* init */
+setURLs([]);
+
+addRowBtn.addEventListener('click', () => {
+  const row = addRow('');
+  linkRows.scrollTop = linkRows.scrollHeight;
+  row.querySelector('input').focus();
+});
+
+clearAllBtn.addEventListener('click', () => {
+  setURLs([]);
+  showToast('All rows cleared');
+});
+
+/* ════════════════════════════════════════════════════════
+   SETTINGS
+════════════════════════════════════════════════════════ */
+settingsBtn.addEventListener('click', () => {
+  settingsPanel.classList.toggle('visible');
+  settingsBtn.classList.toggle('open');
+});
+workersInput.addEventListener('input', () => {
+  workersVal.textContent = workersInput.value;
+});
+
+/* ════════════════════════════════════════════════════════
+   DOWNLOAD
+════════════════════════════════════════════════════════ */
+downloadBtn.addEventListener('click', startDownload);
+
+async function startDownload() {
+  const urls = getURLs();
+  if (!urls.length) {
+    flashError(document.getElementById('link-table-wrap'));
+    showToast('⚠ Paste at least one Instagram link');
+    return;
+  }
+
+  downloadBtn.disabled    = true;
+  downloadBtn.textContent = '⏳ Starting…';
+  resetProgress();
+  progressSec.classList.add('visible');
+  logConsole.innerHTML = '';
+  lastLogCount = 0;
+
+  try {
+    const res  = await fetch('/api/download', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({
+        urls,
+        workers:              parseInt(workersInput.value, 10),
+        cookies_from_browser: cookieSrc.value || null,
+        quality:              qualitySelect.value || 'best',
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    currentJobId = data.job_id;
+    startPolling();
+  } catch (err) {
+    downloadBtn.disabled    = false;
+    downloadBtn.textContent = '⬇ Download Videos';
+    appendLog('[ERROR] ' + err.message, 'log-fail');
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   POLLING
+════════════════════════════════════════════════════════ */
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(pollStatus, 1500);
+  pollStatus();
+}
+
+async function pollStatus() {
+  if (!currentJobId) return;
+  try {
+    const res = await fetch('/api/status/' + currentJobId);
+    if (!res.ok) return;
+    const job = await res.json();
+    updateUI(job);
+    if (job.status !== 'running') {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      downloadBtn.disabled    = false;
+      downloadBtn.textContent = '⬇ Download Videos';
+      loadFiles();
+      if (job.status === 'done') showToast('✅ Download complete!');
+    }
+  } catch { /* transient */ }
+}
+
+/* ════════════════════════════════════════════════════════
+   UI UPDATE
+════════════════════════════════════════════════════════ */
+function updateUI(job) {
+  const total = job.total || 1;
+  const done  = job.done  || 0;
+  const pct   = Math.round((done / total) * 100);
+
+  progressLabel.textContent = `${done} / ${total} URLs`;
+  progressFill.style.width  = pct + '%';
+
+  if (job.status === 'running') {
+    statusBadge.className = 'badge badge-running';
+    statusBadge.innerHTML = '<span class="pulse-dot"></span>&nbsp; Running';
+  } else if (job.status === 'done') {
+    statusBadge.className   = 'badge badge-done';
+    statusBadge.textContent = '✓ Done';
+  } else {
+    statusBadge.className   = 'badge badge-error';
+    statusBadge.textContent = '✗ Error';
+  }
+
+  const failCount = (job.failed || []).length;
+  summaryEl.textContent = `${job.ok} succeeded · ${failCount} failed`;
+
+  const logs = job.logs || [];
+  for (let i = lastLogCount; i < logs.length; i++) {
+    const line = logs[i];
+    let cls = 'log-info';
+    if (line.startsWith('[OK]'))    cls = 'log-ok';
+    if (line.startsWith('[FAIL]'))  cls = 'log-fail';
+    if (line.startsWith('[ERROR]')) cls = 'log-fail';
+    if (line.startsWith('[INFO]'))  cls = 'log-info';
+    appendLog(line, cls);
+  }
+  lastLogCount = logs.length;
+
+  if (failCount > 0) {
+    failedBox.classList.add('visible');
+    failedList.textContent = (job.failed || []).join('\n');
+  } else {
+    failedBox.classList.remove('visible');
+  }
+}
+
+function appendLog(text, cls = 'log-info') {
+  const span = document.createElement('span');
+  span.className   = cls;
+  span.textContent = text + '\n';
+  logConsole.appendChild(span);
+  logConsole.scrollTop = logConsole.scrollHeight;
+}
+
+function resetProgress() {
+  progressFill.style.width  = '0%';
+  progressLabel.textContent = '0 / 0';
+  summaryEl.textContent     = '';
+  statusBadge.className     = 'badge badge-running';
+  statusBadge.innerHTML     = '<span class="pulse-dot"></span>&nbsp; Running';
+  failedBox.classList.remove('visible');
+  failedList.textContent    = '';
+}
+
+/* ════════════════════════════════════════════════════════
+   RETRY
+════════════════════════════════════════════════════════ */
+retryBtn.addEventListener('click', () => {
+  const lines = failedList.textContent.trim().split('\n').filter(Boolean);
+  if (!lines.length) return;
+  setURLs(lines);
+  progressSec.classList.remove('visible');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  showToast(`↺ ${lines.length} failed URL(s) loaded for retry`);
+});
+
+/* ════════════════════════════════════════════════════════
+   FILES
+════════════════════════════════════════════════════════ */
+refreshFilesBtn.addEventListener('click', loadFiles);
+
+openFolderBtn.addEventListener('click', async () => {
+  try {
+    await fetch('/api/open-folder', {method: 'POST'});
+    showToast('📂 Opened downloads folder');
+  } catch {
+    showToast('Could not open folder — navigate to downloads\\ manually');
+  }
+});
+
+async function loadFiles() {
+  try {
+    const res   = await fetch('/api/files');
+    const data  = await res.json();
+    renderFiles(Array.isArray(data) ? data : []);
+  } catch { /* ignore */ }
+}
+
+function renderFiles(files) {
+  filesGrid.querySelectorAll('.file-card').forEach(c => c.remove());
+  fileCountBadge.textContent = files.length;
+
+  if (!files.length) {
+    filesEmpty.style.display = 'block';
+    return;
+  }
+  filesEmpty.style.display = 'none';
+
+  files.forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'file-card fade-in';
+    const ext  = f.filename.split('.').pop().toLowerCase();
+    const icon = ext === 'mp4' || ext === 'webm' || ext === 'mkv' ? '🎬'
+               : ['jpg','jpeg','png','webp'].includes(ext) ? '🖼'
+               : '📄';
+    const mb   = f.size_mb < 0.1 ? '<0.1' : f.size_mb;
+    const date = new Date(f.modified).toLocaleDateString('en-IN', {
+      day:'numeric', month:'short', year:'numeric'
+    });
+    const fileUrl = f.url || ('/downloads/' + encodeURIComponent(f.filename));
+    card.innerHTML = `
+      <div class="file-icon">${icon}</div>
+      <div class="file-info">
+        <div class="file-name" title="${esc(f.filename)}">${esc(f.filename)}</div>
+        <div class="file-meta">${mb} MB &middot; ${date}</div>
+        <div class="file-actions">
+          <a class="file-action-btn" href="${fileUrl}" target="_blank" title="Play or preview in browser">▶ Play</a>
+          <a class="file-action-btn" href="${fileUrl}" download="${esc(f.filename)}" title="Save file to device">⬇ Save</a>
+        </div>
+      </div>`;
+    filesGrid.appendChild(card);
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════════ */
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function flashError(el) {
+  el.classList.add('flash-error');
+  setTimeout(() => el.classList.remove('flash-error'), 800);
+}
+
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+/* ════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════ */
+loadFiles();
+</script>
+</body>
+</html>
